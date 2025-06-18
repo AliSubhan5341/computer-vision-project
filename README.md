@@ -56,6 +56,11 @@ compared under identical conditions.
 ---
 
 ## 2  Dataset: CCPD Explained
+The Chinese City Parking Dataset (CCPD) is, to date, the largest
+publicly-available collection of authentic licence-plate photographs taken in
+real urban traffic.
+It was released by the University of Science & Technology of China (USTC) in
+2018 to encourage end-to-end plate-reading research.
 The **Chinese City Parking Dataset (CCPD)** is the de‑facto benchmark for
 Chinese licence‑plate research.
 
