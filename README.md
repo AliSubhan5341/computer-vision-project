@@ -248,9 +248,10 @@ the detector, pure PyTorch the recogniser.
 
 ---
 
-## 11  License
-*Source code* © 2025 Ali Subhan — MIT.  
+## Credit
+*Source code* © 2025 Ali Subhan  
 *Dataset* © USTC & Xingtai — CC BY‑NC (research‑only).
+*Helper Code + RPNET architecture* [CCPD Official Repo](https://github.com/detectRecog/CCPD)
+
 ---
 
-*Happy training & safe driving 🚗💨*
