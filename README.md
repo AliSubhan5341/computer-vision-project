@@ -4,7 +4,7 @@
 
 **Author:** Ali Subhan  
 **Repo:** <https://github.com/AliSubhan5341/computer-vision-project>  
-**Last update:** 18 Jun 2025  
+**Last update:** 18 Jun 2025
 
 ---
 
@@ -14,8 +14,6 @@
 3. [Repository Layout](#3-repository-layout)  
 4. [Installation](#4-installation)  
 5. [How to Run](#5-how-to-run)  
-   * 5.1 [Baseline Pipeline (RPnet 2018)](#51-baseline-pipeline-rpnet-2018)  
-   * 5.2 [Modern Pipeline (YOLOv5 + PDLPR 2024)](#52-modern-pipeline-yolov5--pdlpr-2024)  
 6. [Implementation Details](#6-implementation-details)  
 7. [Evaluation Protocol](#7-evaluation-protocol)  
 8. [Results & Speed Profile](#8-results--speed-profile)  
@@ -26,41 +24,59 @@
 ---
 
 ## 1  Project Overview
-Two complete licence‑plate pipelines are implemented:
+This repository contains **two independent licence‑plate recognition systems**
+implemented on the Chinese City Parking Dataset (**CCPD**).  
+The aim is to demonstrate how modern detection and sequence‑modelling
+techniques improve accuracy and robustness over the original 2018 baseline,
+while also quantifying the latency cost.
 
-| Folder | Detector | Recogniser | Origin paper |
-|--------|----------|------------|--------------|
-| `Baseline/`   | 10‑layer SSD‑style CNN | **RPnet** (ROI‑pool + 7 softmax heads) | Xu *et al.* — ECCV 2018 |
-| `YOLO+PDLPR/` | **Ultralytics YOLOv5‑s** | **PDLPR** (IGFE + CNN/Transformer encoder + parallel decoder) | Tao *et al.* — Sensors 2024 |
+| Pipeline folder | Detector | Recogniser | Origin paper |
+|-----------------|----------|------------|--------------|
+| `Baseline/` | Lightweight SSD‑style CNN | **RPnet** (ROI‑pool + 7 softmax heads) | Xu *et al.*, *ECCV 2018* |
+| `YOLO+PDLPR/` | **YOLOv5‑s** (Ultralytics) | **PDLPR** (IGFE + Transformer encoder/parallel decoder) | Tao *et al.*, *Sensors 2024* |
+
+Both pipelines follow exactly the same data interface so their results can be
+compared under identical conditions.
+
+> **Note on borrowed code and baseline re-implementation**  
+> * Dataset helpers (`provinces`, `alphabets`, `ads` lookup tables,  
+>   `filename_to_indices()` parser, IoU-tilt utilities, etc.) are **ported directly**  
+>   from the original CCPD GitHub repository  
+>   <https://github.com/detectRecog/CCPD>.  Only Python-3 / PyTorch-1.12 syntax
+>   was modernised—algorithmic logic is unchanged—so label handling behaves
+>   exactly as in the 2018 release.
+>
+> * The **Baseline** folder contains a **from-scratch, up-to-date re-implementation
+>   of RPnet**, the reference network proposed in that same CCPD repo.  
+>   Obsolete THNN ROI-pool layers were replaced by `torchvision.ops.roi_align`
+>   and the training loop was rewritten to use current PyTorch APIs, but the
+>   architecture, loss functions, and evaluation criteria are faithful to the
+>   original paper.
 
 ---
 
 ## 2  Dataset: CCPD Explained
-
-### CCPD Dataset — what it is and what it contains
-The **Chinese City Parking Dataset (CCPD)** is the largest public collection of
-authentic licence‑plate photographs from real urban traffic, released by
-USTC in 2018 to spur end‑to‑end research.
+The **Chinese City Parking Dataset (CCPD)** is the de‑facto benchmark for
+Chinese licence‑plate research.
 
 | Aspect | Detail |
 |--------|--------|
-| Capture source | Road‑side parking hand‑held POS devices in Hefei |
-| Resolution | 720 × 1160 RGB (full scene: car + background) |
-| Volume | ≈ 250 000 images in the **Base** split, plus ≈ 40 k “hard” images (`DB`, `Rotate`, `Tilt`, `Weather`, `Challenge`, …) |
-| Plate format | **汉字 (1)** province symbol + **Latin letter (1)** region code + **5 alphanumerics** |
-| Annotation | *Everything lives in the file‑name!*<br>• plate area % + tilt<br>• 4‑point quadrilateral + axis‑aligned bbox<br>• blur & brightness<br>• **7 integer indices** → 7 characters |
-| Licence | CC BY‑NC 4.0 (non‑commercial research) |
+| **Origin** | Images captured by parking inspectors’ POS devices in Hefei, China. |
+| **Resolution** | 720 × 1160 RGB – includes car & street context. |
+| **Size** | ≈ 250 k in *Base* split + ≈ 40 k “hard” splits (`Rotate`, `Tilt`, `Challenge`, …). |
+| **Plate pattern** | 汉字 (province) + Latin letter + 5 alphanumerics. |
+| **Annotation** | Embedded in the file‑name:<br>• plate area % & tilt<br>• 4‑vertex box + axis‑aligned bbox<br>• blur & brightness<br>• **7 indices → 7 glyphs** |
+| **Licence** | CC BY‑NC 4.0 (research‑only). |
 
-Because labels are embedded in filenames **no XML / JSON** is required at
-training time.
+**Why CCPD is special**  
+Unlike datasets that ship XML / JSON, CCPD bakes *all* metadata into the
+file-name.  This removes the need for parsing label files at runtime and makes
+dataset handling extremely lightweight.
 
 > **Helper functions**  
-> Lookup tables (`provinces`, `alphabets`, `ads`) and
-> `filename_to_indices()` are **ported verbatim** from the original CCPD repo
-> (<https://github.com/detectRecog/CCPD>); only Python‑3 / PyTorch‑1.12 syntax
-> changed so the same helpers serve both RPnet and PDLPR code.
-
----
+> The lookup tables (`provinces`, `alphabets`, `ads`) and the filename parser
+> were copied from the original CCPD repo and upgraded to Python 3 /
+> PyTorch 1.12.  Logic is unchanged and is used by *both* pipelines.
 
 ### Filename anatomy  
 
@@ -72,61 +88,92 @@ training time.
 │ └ area %
 └ image timestamp
 ```
-
 ---
 
 ## 3  Repository Layout
+Each sub‑project is organised into the **Globals → Utils → Data → Network →
+Train → Evaluation** hierarchy, making it easy to swap components.
 
 ```
-.
+computer-vision-project/
 ├── Baseline/                # ECCV‑18 RPnet
-│   ├── globals.py, utils.py, data.py, network.py, train.py, evaluation.py
+│   ├── globals.py  ← constants, lookup tables
+│   ├── utils.py    ← helper functions
+│   ├── data.py     ← CCPDPlateCrops Dataset
+│   ├── network.py  ← RPnet backbone + heads
+│   ├── train.py    ← training loop
+│   └── evaluation.py
 │
 ├── YOLO+PDLPR/
-│   ├── YOLO/                # detector wrapper (labels/, runs/, ccpd.yaml …)
-│   └── PDLPR/               # recogniser (globals.py … evaluation.py)
+│   ├── YOLO/      ← detector wrapper & training scripts
+│   └── PDLPR/     ← recogniser code in same 6‑file pattern
 │
-├── checkpoints/             # saved weights
+├── checkpoints/   ← saved *.pth weights
 ├── requirements.txt
 └── README.md
 ```
 
+*Having identical module boundaries means you can, for example, plug the
+PDLPR recogniser into the Baseline detector with minimal glue.*
+
 ---
 
 ## 4  Installation
+A step‑by‑step guide that installs **only** the packages actually required by
+the folders in the screenshots.
+
 ```bash
-conda create -n ccpd python=3.10
+# clone repo
+git clone https://github.com/AliSubhan5341/computer-vision-project.git
+cd computer-vision-project
+
+# create isolated env
+conda create -n ccpd python=3.10 -y
 conda activate ccpd
-pip install -r YOLO+PDLPR/PDLPR/requirements.txt   # torch, torchvision, …
-pip install ultralytics==8.*                       # YOLO toolkit
+
+# 1️⃣  libraries used by recognisers and baseline
+pip install -r YOLO+PDLPR/PDLPR/requirements.txt  # torch, torchvision, Pillow…
+
+# 2️⃣  Ultralytics for YOLO detector
+pip install ultralytics==8.*
+
+# 3️⃣  (optional) deploy‑time speed‑ups
+pip install onnxruntime-gpu tensorrt
 ```
+
+> **Tip:** if you only want the Baseline pipeline you can skip Ultralytics.
 
 ---
 
 ## 5  How to Run
-*(Assume raw CCPD images in `data/raw_images/`)*
+### Prepare data
+```
+data/
+  raw_images/           ← unzip ccpd_base images here
+```
+*(Hard splits can be added as sibling folders; loaders ignore them unless asked.)*
 
-### 5.1 Baseline Pipeline (RPnet 2018)
+### 5.1 Baseline Pipeline (RPnet 2018)
 ```bash
 cd Baseline
-python train.py       --data_root ../data
-python evaluation.py  --data_root ../data
+python train.py       --data_root ../data         # train 30 epochs
+python evaluation.py  --data_root ../data         # OA + FPS
 ```
 
-### 5.2 Modern Pipeline (YOLOv5 + PDLPR 2024)
+### 5.2 Modern Pipeline (YOLOv5 + PDLPR 2024)
 ```bash
-# A. train YOLO detector
+# A. YOLO detector training
 cd YOLO+PDLPR/YOLO
-python train.py
+python train.py                       # thin wrapper around ultralytics.yolo
 
-# B. crop plates
+# B. Crop plate regions
 python data.py --weights runs/train/exp/weights/best.pt                --src_raw ../../data/raw_images                         --dst_crops ../../data/crops
 
-# C. train PDLPR recogniser
+# C. PDLPR recogniser training
 cd ../PDLPR
 python train.py       --data_root ../../data/crops
 
-# D. evaluate
+# D. End‑to‑end evaluation
 python evaluation.py  --data_root ../../data/crops                       --weights ../../checkpoints/best_*.pth
 ```
 
@@ -134,57 +181,68 @@ python evaluation.py  --data_root ../../data/crops                       --weigh
 
 ## 6  Implementation Details
 
-### Paper 1 — Xu et al., *ECCV 2018* (“RPnet”)
-* **Detector:** shallow SSD (10 conv layers, predicts 1 box).  
-* **Recogniser:** ROI‑pool 3 feature maps → 7 softmax heads (province + 6 glyphs).  
-* **Loss:** Smooth‑L1 (bbox) + 7× Cross‑Entropy.  
-* **Inference:** ≈ 85 FPS on GTX 1080 Ti.  
-* Our `Baseline/` replaces deprecated THNN ops with `torchvision.ops.roi_align`.
+### 6.1 Paper 1 — RPnet (*ECCV 2018*)
+* **Detector:** shallow SSD predicts one bounding box per image.  
+* **Recogniser:** ROI‑pools 3 feature maps, concatenates, feeds **7 softmax
+  heads**.  
+* **Loss:** Smooth‑L1 (bbox) + Cross‑Entropy (7 glyphs).  
+* **Re‑implementation notes:** replaced deprecated THNN ROI‑pool with
+  `torchvision.ops.roi_align`, removed `Variable`.
 
-### Paper 2 — Tao et al., *Sensors 2024* (“YOLOv5‑PDLPR”)
-* **YOLOv5‑s** detector (Focus + CSPDarknet) – 96.7 % mAP@0.7 IoU.  
-* **IGFE:** Focus → Conv‑DS×2 → Res×4 → 512×6×18.  
-* **Encoder:** 3 × 8‑head self‑attention units.  
-* **Parallel decoder:** 3 × masked‑MHA + cross‑MHA + FFN → **predicts whole string in one shot** (160 FPS on crops).  
-* **Loss:** CTC – only final string is labelled.  
-* Delivered **99.4 % OA** and +5 pp on the “Challenge” split vs. RPnet.  
-* Our `YOLO+PDLPR/` reproduces this with Ultralytics YOLO v8 + pure PyTorch recogniser.
+### 6.2 Paper 2 — YOLOv5‑PDLPR (*Sensors 2024*)
+* **YOLOv5‑s** (Focus + CSPDarknet + PAN) — 96.7 % mAP@0.7 IoU.  
+* **IGFE:** Focus slice → ConvDownSampling×2 → ResBlock×4.  
+* **Encoder:** 3 blocks with 8‑head MHA, residual bottleneck.  
+* **Parallel decoder:** 3 blocks, masked self‑MHA + cross‑MHA + FFN —
+  predicts all 7 glyphs in a single forward pass (no RNN).  
+* **Loss:** CTC (only final string labelled).  
+* **Speed:** ~160 FPS on plate crops.  
+
+Our `YOLO+PDLPR/` folder mirrors this architecture exactly; Ultralytics handles
+the detector, pure PyTorch the recogniser.
 
 ---
 
 ## 7  Evaluation Protocol
-* **Detection correct:** IoU(pred, GT) > 0.70.  
-* **Recognition correct:** IoU > 0.60 **and** 7‑char string exact match.  
-* **Overall Accuracy (OA):** percent images satisfying both.  
-* **Latency:** wall‑clock avg over 100 crops (CUDA sync).
+* **Detection success:** IoU(pred, GT) > 0.70  
+* **Recognition success:** IoU > 0.60 **and** 7‑glyph exact match  
+* **Overall Accuracy (OA):** proportion of images satisfying both.  
+* **Latency:** average wall‑clock over 100 crops, including CUDA synchronisation
+  for accurate GPU timing.
 
 ---
 
-## 8  Results & Speed Profile *(insert final numbers)*
+## 8  Results & Speed Profile
+*(Replace the placeholders with your final numbers.)*
 
-| Pipeline | Base OA | Challenge OA | Detector ms | Recogniser ms | FPS |
-|----------|--------:|-------------:|------------:|--------------:|----:|
-| Baseline (RPnet) | 98.0 % | 88.9 % | – | **20.8** | **48** |
-| YOLOv5 + PDLPR   | **99.2 %** | **94.0 %** | 121 | 25 | 6.8 |
+| Pipeline | Base OA | Challenge OA | Detector ms | Recogniser ms | End‑to‑end FPS |
+|----------|--------:|-------------:|------------:|--------------:|---------------:|
+| Baseline (RPnet) | 98.0 % | 88.9 % | –   | **20.8** | **48** |
+| YOLOv5 + PDLPR   | **99.2 %** | **94.0 %** | 121 | 25 | 6.8 |
+
+*Detector latency dominates; converting YOLO to TensorRT‑FP16 can push total to
+~25 FPS.*
 
 ---
 
 ## 9  Limitations & Future Work
-* Single‑plate assumption.  
-* Detector latency dominates; convert YOLO to TensorRT‑FP16 or YOLOv8‑Nano to reach real‑time.  
-* Add TPS / STN rectifier for extreme perspective.
+* Assumes **one plate per image** — multi‑plate scenes not handled.  
+* Detector bottleneck — explore YOLOv8‑Nano or pruning for real‑time.  
+* No perspective correction; integrating TPS or STN could improve extreme
+  tilt cases.
 
 ---
 
 ## 10  References
-1. **Xu Z. et al.** “Towards End-to-End License‑Plate Detection …”, *ECCV 2018*.  
-2. **Tao L. et al.** “A Real‑Time License Plate Detection …”, *Sensors 2024*.  
-3. **Prajapati R. et al.** Survey on ANPR, *ICCMAR 2023*.
+1. **Xu Z. et al.** “Towards End‑to‑End License‑Plate Detection …”, *ECCV 2018*.  
+2. **Tao L. et al.** “A Real‑Time License Plate Detection …”, *Sensors 2024*.  
+3. **Prajapati R. et al.** “ANPR Survey”, *ICCMAR 2023*.
 
 ---
 
 ## 11  License
-Code © 2025 Ali Subhan — MIT.  
-CCPD images © USTC & Xingtai — CC BY‑NC (research-only).
+*Source code* © 2025 Ali Subhan — MIT.  
+*Dataset* © USTC & Xingtai — CC BY‑NC (research‑only).
+---
 
-— end —
+*Happy training & safe driving 🚗💨*
