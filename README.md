@@ -64,7 +64,7 @@ It was released by the University of Science & Technology of China (USTC) in
 The **Chinese City Parking Dataset (CCPD)** is the de‑facto benchmark for
 Chinese licence‑plate research.
 
-![](images/1.png)
+![Sample images from CCPD](images/1.png)
 
 
 | Aspect | Detail |
@@ -221,15 +221,15 @@ the detector, pure PyTorch the recogniser.
 ---
 
 ## 8  Results & Speed Profile
-*(Replace the placeholders with your final numbers.)*
 
-| Pipeline | Base OA | Challenge OA | Detector ms | Recogniser ms | End‑to‑end FPS |
-|----------|--------:|-------------:|------------:|--------------:|---------------:|
-| Baseline (RPnet) | 98.0 % | 88.9 % | –   | **20.8** | **48** |
-| YOLOv5 + PDLPR   | **99.2 %** | **94.0 %** | 121 | 25 | 6.8 |
+![RPNET Training Metrics](images/2.jpg)
+![YOLOv5x Training Metrics](images/YOLOv5%20Results.jpg)
+![YOLO+PDLPR Training Metrics](images/3.jpg)
+![Speed Profile Comparison](images/4.jpg)
+![Speed Time Tradeoff](images/5.jpg)
+![Test Results](images/6.png)
 
-*Detector latency dominates; converting YOLO to TensorRT‑FP16 can push total to
-~25 FPS.*
+
 
 ---
 
@@ -250,8 +250,8 @@ the detector, pure PyTorch the recogniser.
 
 ## Credit
 *Source code* © 2025 Ali Subhan  
-*Dataset* © USTC & Xingtai — CC BY‑NC (research‑only).
-*Helper Code + RPNET architecture* [CCPD Official Repo](https://github.com/detectRecog/CCPD)
+*Dataset* © USTC & Xingtai — CC BY‑NC (research‑only)
+*Helper Code + RPNET architecture* [CCPD Official Repo](https://github.com/detectRecog/CCPD).
 
 ---
 
