@@ -64,6 +64,9 @@ It was released by the University of Science & Technology of China (USTC) in
 The **Chinese City Parking Dataset (CCPD)** is the de‑facto benchmark for
 Chinese licence‑plate research.
 
+![](images/1.png)
+
+
 | Aspect | Detail |
 |--------|--------|
 | **Origin** | Images captured by parking inspectors’ POS devices in Hefei, China. |
