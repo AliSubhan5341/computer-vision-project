@@ -222,12 +222,41 @@ the detector, pure PyTorch the recogniser.
 
 ## 8  Results & Speed Profile
 
-![RPNET Training Metrics](images/2.jpg)
-![YOLOv5x Training Metrics](images/YOLOv5%20Results.jpg)
-![YOLO+PDLPR Training Metrics](images/3.jpg)
-![Speed Profile Comparison](images/4.jpg)
-![Speed Time Tradeoff](images/5.jpg)
-![Test Results](images/6.png)
+<p align="center">
+  <img src="images/2.jpg" alt="RPNET Training Metrics" width="600"/>
+  <br/>
+  <strong>RPNET Training Metrics</strong>
+</p>
+
+<p align="center">
+  <img src="images/YOLOv5%20Results.jpg" alt="YOLOv5x Training Metrics" width="600"/>
+  <br/>
+  <strong>YOLOv5x Training Metrics</strong>
+</p>
+
+<p align="center">
+  <img src="images/3.jpg" alt="YOLO+PDLPR Training Metrics" width="600"/>
+  <br/>
+  <strong>YOLO+PDLPR Training Metrics</strong>
+</p>
+
+<p align="center">
+  <img src="images/4.jpg" alt="Speed Profile Comparison" width="600"/>
+  <br/>
+  <strong>Speed Profile Comparison</strong>
+</p>
+
+<p align="center">
+  <img src="images/5.jpg" alt="Speed Time Tradeoff" width="600"/>
+  <br/>
+  <strong>Speed Time Tradeoff</strong>
+</p>
+
+<p align="center">
+  <img src="images/6.png" alt="Test Results" width="600"/>
+  <br/>
+  <strong>Test Results</strong>
+</p>
 
 
 
